@@ -5,11 +5,16 @@ import time
 
 def sample_task(self,name):
     print(f"processing job for {name}")
+    time.sleep(2)
+
+    # INTENTIONAL FAILURE for learning
+    if name == "fail":
+        raise ValueError("Simulated task failure")
 
     #mark task as started
     self.update_state(state="STARTED")
 
     time.sleep(5)#simulate slow work
-    
+
     print(f"job completed for {name}")
     return f"Hello {name}"

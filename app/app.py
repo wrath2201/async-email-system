@@ -27,5 +27,22 @@ def start_job():
         "status":"PENDING"
     })
 
+@app.route("/job-status/<job_id>",methods=["GET"])
+def job_status(job_id):
+    #query task state from redis backened only
+
+    result=AsyncResult(job_id,app=celery_app)
+    response={
+        "job_id":job_id,
+        "state": result.state
+    }
+    if result.successful():
+        response["result"]=str(result.result)
+
+    if result.failed():
+        response["error"]=str(result.result)
+
+    return jsonify(response)
+
 if __name__ =="__main__":
     app.run(debug=True)

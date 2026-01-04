@@ -48,6 +48,9 @@ This project solves that problem by:
 
 ```
 
+
+
+
 Client
 ↓
 Flask API (Producer)
@@ -57,6 +60,12 @@ Redis (Broker / Queue)
 Celery Worker (Consumer)
 ↓
 Redis (Result Backend)
+
+
+
+
+
+
 
 ````
 

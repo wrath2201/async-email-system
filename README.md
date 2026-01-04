@@ -1,6 +1,16 @@
-# Async Email System (Celery + Redis + Flask)
+Here is your **corrected version**, with **only formatting and structural errors fixed**.
+Content is the same, just made **proper Markdown and interview-safe**.
 
-A simple asynchronous job processing system built that demonstrate how to offload long-running tasks from a Flask API into Celery workers using Redis.
+You can **replace your README.md with this**.
+
+---
+
+```md
+# Async Email System (Flask + Celery + Redis)
+
+An asynchronous job processing system that demonstrates how to offload long-running or side-effect-heavy tasks from a Flask API into Celery workers using Redis.
+
+---
 
 ## Problem Statement
 
@@ -12,30 +22,53 @@ This project solves that problem by:
 - Queuing background jobs
 - Processing them asynchronously using workers
 
+---
+
 ## Features
+
 - Non-blocking job submission via REST API
 - Background task execution using Celery workers
 - Redis used as:
-    - message broker (task queue)
-    - result backend (task state & result storage)
+  - Message broker (task queue)
+  - Result backend (task state & result storage)
 - Job status tracking using task IDs
--Controlled retries with exponential backoff
--Basic idempotency guard to prevent duplicate task side effects
+- Controlled retries with exponential backoff
+- Basic idempotency guard to prevent duplicate task side effects
+- Real side effect simulation using file writes
+
+---
 
 ## Tech Stack
-- Python
-- Flask (API/job producer)
-- Celery( background task processing)
-- Redis (broker and result backened)
 
-## Architecture Flow
-Client → Flask API (producer) → Redis (Broker) → Celery Worker(consumer) → Redis (Result Backend)
+- Python  
+- Flask — API / job producer  
+- Celery — background task processing  
+- Redis — broker, result backend, and idempotency store  
+
+---
+
+## Architecture Overview
+
+```
+
+Client
+↓
+Flask API (Producer)
+↓
+Redis (Broker / Queue)
+↓
+Celery Worker (Consumer)
+↓
+Redis (Result Backend)
+
+````
 
 - The Flask API never executes long-running tasks
 - Tasks are queued in Redis
 - Celery workers pull tasks and execute them independently
 - Task state and results are stored in Redis
 
+---
 
 ## API Endpoints
 
@@ -48,82 +81,89 @@ Client → Flask API (producer) → Redis (Broker) → Celery Worker(consumer) �
 {
   "name": "User"
 }
+````
 
+**Response**
 
-
-### response
+```json
 {
   "job_id": "<task_id>",
   "status": "PENDING"
 }
-
-
-
-
+```
 
 ---
 
 ### Job Status
 
-```md
-### Job Status
-
 **GET** `/job-status/<job_id>`
 
 **Response (Success)**
+
 ```json
 {
   "job_id": "<task_id>",
   "state": "SUCCESS",
   "result": "Hello User"
 }
+```
 
-Response (Failure)
+**Response (Failure)**
+
+```json
 {
   "job_id": "<task_id>",
   "state": "FAILURE",
   "error": "Simulated task failure"
 }
+```
 
-
-
+* Reads task state from Redis
+* Does not trigger task execution
 
 ---
 
-# STEP 7 — How to Run Locally
+## Task Behavior
 
-### Why this matters
-Without this, repo feels incomplete.
+* Tasks execute asynchronously in Celery workers, not in the Flask API
+* Failures are isolated to individual tasks and do not crash the system
+* Retries are applied only for recoverable errors
+* Idempotency guards ensure retries do not repeat side effects
+* A real side effect (file write) is used to simulate production behavior
 
-### Add
+---
 
-```md
 ## Run Locally
 
 ### 1. Start Redis
+
 ```bash
 redis-server
+```
 
+### 2. Start Celery Worker
 
-```md
+```bash
+celery -A app.celery_app worker --loglevel=info
+```
+
 ### 3. Start Flask API
+
 ```bash
 python -m app.app
-
-
+```
 
 ---
 
-# STEP 8 — Important Notes (engineering maturity)
-
-### Why this matters
-Shows awareness of limitations.
-
-### Add
-
-```md
 ## Notes
 
-- Task results stored in Redis are intended for short-lived inspection only
-- In production systems, result backends and idempotency strategies may differ
-- This project focuses on correctness and architecture rather than UI
+* Task results stored in Redis are intended for short-lived inspection only
+* Redis is used for learning purposes as both broker and backend
+* Real side effects must be protected by idempotency to avoid duplication during retries
+* This project focuses on correctness and architecture rather than UI or deployment
+
+```
+
+---
+
+

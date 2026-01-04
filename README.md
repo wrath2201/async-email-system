@@ -1,9 +1,6 @@
-Here is your **corrected version**, with **only formatting and structural errors fixed**.
-Content is the same, just made **proper Markdown and interview-safe**.
 
-You can **replace your README.md with this**.
 
----
+
 
 ```md
 # Async Email System (Flask + Celery + Redis)
@@ -162,8 +159,6 @@ python -m app.app
 * Real side effects must be protected by idempotency to avoid duplication during retries
 * This project focuses on correctness and architecture rather than UI or deployment
 
-```
 
----
 
 

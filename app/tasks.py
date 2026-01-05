@@ -2,6 +2,7 @@ from app.celery_app import celery_app
 import time
 import redis
 from pathlib import Path
+import os
 
 redis_client=redis.Redis(host="localhost",port=6379,db=1)
 OUTPUT_DIR=Path("output")
@@ -16,6 +17,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
         autoretry_for=(ValueError,),
         retry_kwargs={"max_retries":3},
         retry_backoff=5,
+        time_limit=3,   #hard limit( seconds )
         ) #marks function as a background job
 
 def sample_task(self,name):
@@ -33,6 +35,14 @@ def sample_task(self,name):
     
 
     print(f"processing job for {name}")
+    # Time limit protects workers from tasks that hang indefinitely
+
+    if name=="crash":
+        print("simulating worker crash")
+        os._exit(1) # force kill the worker process
+
+    if name=="slow":
+        time.sleep(10) # deliberately exceeds time_limit
     time.sleep(2)
 
     # INTENTIONAL FAILURE for learning

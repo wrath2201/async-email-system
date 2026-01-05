@@ -139,6 +139,20 @@ Redis (Result Backend)
 
 ---
 
+## Observability & System Visibility
+
+This system is designed to be observable without relying on heavy monitoring tools.
+
+- Task state stored in Redis is the **source of truth** for task progress
+- Clients can track task lifecycle using task IDs via the status API
+- Logs are used for debugging, not for determining system state
+- Time limits protect workers from stuck tasks
+- Worker crashes are detected via task re-delivery semantics
+
+The system follows **at-least-once execution**, and idempotency ensures that task retries or re-execution do not cause duplicate side effects.
+
+---
+
 ## Run Locally
 
 ### 1. Start Redis

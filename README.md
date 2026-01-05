@@ -1,6 +1,6 @@
 
 
-
+---
 
 ```md
 # Async Email System (Flask + Celery + Redis)
@@ -43,29 +43,22 @@ This project solves that problem by:
 - Redis — broker, result backend, and idempotency store  
 
 ---
+
 ## Architecture Overview
 
 ```
 
-
-
-
 Client
-  ↓
+↓
 Flask API (Producer)
-  ↓
+↓
 Redis (Broker / Queue)
-  ↓
+↓
 Celery Worker (Consumer)
-  ↓
+↓
 Redis (Result Backend)
 
-
-
-
-
-
-
+````
 
 - The Flask API never executes long-running tasks
 - Tasks are queued in Redis
@@ -141,11 +134,11 @@ Redis (Result Backend)
 
 This system is designed to be observable without relying on heavy monitoring tools.
 
-- Task state stored in Redis is the **source of truth** for task progress
-- Clients can track task lifecycle using task IDs via the status API
-- Logs are used for debugging, not for determining system state
-- Time limits protect workers from stuck tasks
-- Worker crashes are detected via task re-delivery semantics
+* Task state stored in Redis is the **source of truth** for task progress
+* Clients can track task lifecycle using task IDs via the status API
+* Logs are used for debugging, not for determining system state
+* Time limits protect workers from stuck tasks
+* Worker crashes are detected via task re-delivery semantics
 
 The system follows **at-least-once execution**, and idempotency ensures that task retries or re-execution do not cause duplicate side effects.
 
@@ -180,6 +173,8 @@ python -m app.app
 * Real side effects must be protected by idempotency to avoid duplication during retries
 * This project focuses on correctness and architecture rather than UI or deployment
 
+```
 
 
 
+```

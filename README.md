@@ -43,7 +43,6 @@ This project solves that problem by:
 - Redis — broker, result backend, and idempotency store  
 
 ---
-
 ## Architecture Overview
 
 ```
@@ -52,13 +51,13 @@ This project solves that problem by:
 
 
 Client
-↓
+  ↓
 Flask API (Producer)
-↓
+  ↓
 Redis (Broker / Queue)
-↓
+  ↓
 Celery Worker (Consumer)
-↓
+  ↓
 Redis (Result Backend)
 
 
@@ -67,7 +66,6 @@ Redis (Result Backend)
 
 
 
-````
 
 - The Flask API never executes long-running tasks
 - Tasks are queued in Redis

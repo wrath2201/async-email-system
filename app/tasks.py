@@ -3,8 +3,12 @@ import time
 import redis
 from pathlib import Path
 import os
+from app.email_service import send_email
 
-redis_client=redis.Redis(host="localhost",port=6379,db=1)
+redis_client=redis.Redis.from_url(
+    os.getenv("REDIS_BACKEND_URL"),
+    db=int(os.getenv("REDIS_IDEMPOTENCY_DB",1))
+)
 OUTPUT_DIR=Path("output")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -14,10 +18,10 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 # - Same task ID is reused across retries
 @celery_app.task(
         bind=True ,
-        autoretry_for=(ValueError,),
+        autoretry_for=(Exception,),
         retry_kwargs={"max_retries":3},
-        retry_backoff=5,
-        time_limit=3,   #hard limit( seconds )
+        retry_backoff=10,
+        time_limit=30,   #hard limit( seconds )
         ) #marks function as a background job
 
 def sample_task(self,name):
@@ -49,8 +53,12 @@ def sample_task(self,name):
     if name == "fail":
         raise ValueError("Simulated task failure")
     
-    # REAL SIDE EFFECT 
-    output_file.write_text(f"Hello {name}\n")
+    #external side effect(SMTP)- protected by reties and isempotency
+    send_email(
+        to_email=os.getenv("SMTP_USERNAME"),
+        subject="Async Email Test",
+        body=f"Hello {name},your async job has completed successfully"  
+    )
 
     
     #Mark task as completed

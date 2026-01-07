@@ -8,6 +8,10 @@ from app.celery_app import celery_app
 # Import Celery task (must match worker import path exactly)
 from app.tasks import sample_task
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 app=Flask(__name__)
 
 @app.route("/start-job",methods=["POST"])
@@ -45,4 +49,4 @@ def job_status(job_id):
     return jsonify(response)
 
 if __name__ =="__main__":
-    app.run(debug=True)
+    app.run(debug=bool(int(os.getenv("FLASK_DEBUG",0))))

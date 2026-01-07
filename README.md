@@ -1,8 +1,4 @@
 
-
----
-
-```md
 # Async Email System (Flask + Celery + Redis)
 
 An asynchronous job processing system that demonstrates how to offload long-running or side-effect-heavy tasks from a Flask API into Celery workers using Redis.
@@ -31,7 +27,7 @@ This project solves that problem by:
 - Job status tracking using task IDs
 - Controlled retries with exponential backoff
 - Basic idempotency guard to prevent duplicate task side effects
-- Real side effect simulation using file writes
+- Real side-effect simulation (SMTP email / file write)
 
 ---
 
@@ -126,7 +122,7 @@ Redis (Result Backend)
 * Failures are isolated to individual tasks and do not crash the system
 * Retries are applied only for recoverable errors
 * Idempotency guards ensure retries do not repeat side effects
-* A real side effect (file write) is used to simulate production behavior
+* Tasks may be re-executed after crashes (at-least-once delivery)
 
 ---
 
@@ -137,10 +133,7 @@ This system is designed to be observable without relying on heavy monitoring too
 * Task state stored in Redis is the **source of truth** for task progress
 * Clients can track task lifecycle using task IDs via the status API
 * Logs are used for debugging, not for determining system state
-* Time limits protect workers from stuck tasks
 * Worker crashes are detected via task re-delivery semantics
-
-The system follows **at-least-once execution**, and idempotency ensures that task retries or re-execution do not cause duplicate side effects.
 
 ---
 
@@ -175,6 +168,3 @@ python -m app.app
 
 ```
 
-
-
-```

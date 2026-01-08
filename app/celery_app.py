@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+print("CELERY ENV SMTP USER:",os.getenv("SMTP_USERNAME"))
 
 def make_celery():
     celery=Celery(

@@ -24,7 +24,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
         time_limit=30,   #hard limit( seconds )
         ) #marks function as a background job
 
-def sample_task(self,name):
+def sample_task(self,name,email):
 
     task_id=self.request.id
     output_file=OUTPUT_DIR / f"{task_id}.txt"
@@ -55,7 +55,7 @@ def sample_task(self,name):
     
     #external side effect(SMTP)- protected by reties and isempotency
     send_email(
-        to_email=os.getenv("SMTP_USERNAME"),
+        to_email=email,
         subject="Async Email Test",
         body=f"Hello {name},your async job has completed successfully"  
     )

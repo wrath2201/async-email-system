@@ -12,6 +12,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+print("FLASK ENV SMTP USER:",os.getenv("SMTP_USERNAME"))
+
 app=Flask(__name__)
 
 @app.route("/start-job",methods=["POST"])
@@ -19,12 +21,14 @@ app=Flask(__name__)
 def start_job():
     data=request.get_json()
     name=data.get("name","User")
+    email = data.get("email") 
 
     # Queue this task for background execution:
     # `.delay()` does NOT call the function here — it serializes the task + args,
     # sends them to the broker (Redis), and returns immediately with a task ID.
 
-    job=sample_task.delay(name)
+
+    job=sample_task.delay(name,email)
 
     return jsonify({
         "job_id":job.id,

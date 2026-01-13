@@ -1,96 +1,305 @@
 
-## 1. What the project does
+# DEPLOYMENT.md
 
-This project is an **async email sending system** built with Flask, Celery, and Redis.
-The API accepts a request to send an email, immediately returns a response, and offloads the actual email sending to a background worker. This prevents the API from blocking while waiting for SMTP operations.
+**Async Email System – Production Deployment Guide**
 
-The main goal of the project is to understand **asynchronous task processing**, **real-world deployment issues**, and the gap between **local development and production environments**.
-
-This project focuses more on system behaviour and failure handling than on UI or feature
----
-
-## 2. Why async was needed
-
-Initially, email sending was done directly inside the Flask request cycle.
-This caused the API to block until the SMTP server responded, which is slow and unreliable.
-
-Problems with synchronous email sending:
-
-* API response time depended on SMTP latency
-* A failed SMTP login could crash the request
-* Not scalable for multiple email requests
-
-Solution:
-
-* Move email sending to **Celery**
-* Use **Redis** as a message broker
-* Let Flask only enqueue tasks and return immediately
+This document explains **how this system is deployed on a Linux server** and **why each step exists**.
+It is written so the project can be rebuilt from scratch without relying on memory.
 
 ---
 
-## 3. Local architecture
+## 1. Overview
 
-**Flask**
+This project is deployed as a **fully automated async backend system** using:
 
-* Exposes an API endpoint
-* Validates input
-* Pushes email tasks to Redis via Celery
+* Flask (API – producer)
+* Celery (background worker – consumer)
+* Redis (message broker)
+* Gunicorn (production WSGI server)
+* systemd (process manager)
 
-**Celery Worker**
+Once deployed:
 
-* Listens to the Redis queue
-* Executes the email sending logic
-* Handles retries on failure
+* No manual terminals are needed
+* Services start on boot
+* Services restart on crash
 
-**Redis**
+---
 
-* Acts as the message broker
-* Stores pending tasks until workers consume them
-
-Flow:
+## 2. High-Level Architecture
 
 ```
-Client → Flask API → Redis Queue → Celery Worker → SMTP Server
+Client
+  ↓
+Gunicorn (Flask API)        ← systemd
+  ↓
+Redis (Broker)
+  ↓
+Celery Worker               ← systemd
+  ↓
+SMTP Server
 ```
 
 ---
 
-## 4. What worked locally
+## 3. Server Requirements
 
-Locally, the system worked as expected:
+* Ubuntu 22.04+ (tested on AWS EC2)
+* Python 3.10+
+* Redis
 
-* Flask successfully queued tasks
-* Celery workers picked up tasks
-* Emails were sent correctly via SMTP
-* Environment variables were loaded properly using `.env`
-* Redis was available without authentication issues
+### Install system dependencies
 
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip redis-server
+```
 
----
+Verify Redis:
 
-## 5. What broke during deployment
-
-Several issues appeared only after moving to production:
-
-* `requirements.txt` contained incorrect or unavailable package versions
-* Redis was not configured or running properly on EC2
-* Environment variables were missing or not loaded
-* SMTP credentials failed due to incorrect env setup
-* Permission and SSH-related confusion during server setup
-* Difference between running services manually vs as background processes
+```bash
+redis-cli ping
+# Expected: PONG
+```
 
 ---
 
-## 6. How I fixed each issue
+## 4. Project Setup
 
-* Fixed `requirements.txt` by using valid package versions available on PyPI
-* Installed and verified Redis manually on the EC2 instance
-* Explicitly set environment variables instead of relying on `.env`
-* Tested SMTP credentials independently before integrating
-* Used system-level commands to confirm services were running
-* Learned to debug by checking logs instead of guessing
+### Clone repository
+
+```bash
+cd /home/ubuntu
+git clone <REPO_URL> async-email-system
+cd async-email-system
+```
+
+### Create virtual environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
 ---
+
+## 5. Environment Variables
+
+Create `.env` in the project root:
+
+```env
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+FLASK_DEBUG=0
+```
+
+Secure it:
+
+```bash
+chmod 600 .env
+```
+
+> `.env` is loaded by Flask and Celery at runtime.
+
+---
+
+## 6. Gunicorn (Production Server)
+
+### Why Gunicorn
+
+* Flask dev server is **not production-safe**
+* Gunicorn handles:
+
+  * concurrency
+  * worker isolation
+  * crash recovery
+
+### Flask entry point
+
+The Flask app lives at:
+
+```
+app/app.py
+```
+
+Gunicorn import path:
+
+```
+app.app:app
+```
+
+Manual test (one-time):
+
+```bash
+source venv/bin/activate
+gunicorn app.app:app
+```
+
+---
+
+## 7. systemd – Flask API Service
+
+### Purpose
+
+* Run Gunicorn in background
+* Auto-restart on crash
+* Auto-start on boot
+* No SSH session required
+
+### Service file
+
+Create:
+
+```bash
+sudo nano /etc/systemd/system/async-email-api.service
+```
+
+```ini
+[Unit]
+Description=Async Email Flask API (Gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/async-email-system
+
+Environment="PATH=/home/ubuntu/async-email-system/venv/bin"
+ExecStart=/home/ubuntu/async-email-system/venv/bin/gunicorn \
+          --workers 2 \
+          --bind 127.0.0.1:8000 \
+          app.app:app
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Enable and start
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start async-email-api
+sudo systemctl enable async-email-api
+```
+
+### Verify
+
+```bash
+sudo systemctl status async-email-api
+```
+
+---
+
+## 8. systemd – Celery Worker Service
+
+### Purpose
+
+* Process background jobs
+* No manual `celery` command
+* Auto-restart & auto-start
+
+### Service file
+
+Create:
+
+```bash
+sudo nano /etc/systemd/system/async-email-worker.service
+```
+
+```ini
+[Unit]
+Description=Async Email Celery Worker
+After=network.target redis.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/async-email-system
+
+Environment="PATH=/home/ubuntu/async-email-system/venv/bin"
+ExecStart=/home/ubuntu/async-email-system/venv/bin/celery \
+          -A app.celery_app worker --loglevel=info
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Enable and start
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start async-email-worker
+sudo systemctl enable async-email-worker
+```
+
+### Verify
+
+```bash
+sudo systemctl status async-email-worker
+```
+
+---
+
+## 9. End-to-End Test
+
+Send a job request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/start-job \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Tushar",
+    "email": "tusharsaini2201@gmail.com"
+  }'
+```
+
+Expected:
+
+* Immediate response with `job_id`
+* Email delivered asynchronously
+
+---
+
+## 10. Logs & Debugging
+
+### API logs (Gunicorn + Flask)
+
+```bash
+sudo journalctl -u async-email-api -f
+```
+
+### Worker logs (Celery)
+
+```bash
+sudo journalctl -u async-email-worker -f
+```
+
+These commands **do not start services** — they only display logs.
+
+---
+
+## 11. What systemd Automates
+
+After deployment:
+
+* No manual Flask start
+* No manual Gunicorn start
+* No manual Celery start
+* No need for multiple terminals
+* Services survive reboot and crashes
+
+---
+
+
 
 
 

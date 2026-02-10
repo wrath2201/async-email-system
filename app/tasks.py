@@ -37,6 +37,8 @@ def sample_task(self,name,email):
         print(f"Task{task_id} already processed . Skipping")
         return "Already processed"
     
+    #ARTIFICIAL SLOWDOWN
+    time.sleep(1)
 
     print(f"processing job for {name}")
     # Time limit protects workers from tasks that hang indefinitely
